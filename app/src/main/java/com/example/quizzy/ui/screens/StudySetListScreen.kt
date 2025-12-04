@@ -1,17 +1,28 @@
 package com.example.quizzy.ui.screens
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-// mock data class def
+// Mock data class def
 data class StudySet(
     val id: Int,
     val title: String,
@@ -21,77 +32,215 @@ data class StudySet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudySetListScreen() {
-    // mock data
+fun StudySetListScreen(
+    onNavigateToCreateSet: () -> Unit
+) {
+    // Custom sage green colors
+    val sageGreen = Color(0xFF87A96B)
+    val lightSage = Color(0xFFC8D5B9)
+    val darkSage = Color(0xFF5F7C52)
+    val creamBg = Color(0xFFF5F5DC)
+
+    // Mock data
     val studySets = remember {
         listOf(
-            StudySet(1, "Spanish Vocabulary", "Common phrases", 25),
-            StudySet(2, "Biology Chapter 5", "Cell structure", 15),
-            StudySet(3, "History Dates", "World War II events", 30)
+            StudySet(1, "Spanish Vocabulary", "Common phrases and expressions", 25),
+            StudySet(2, "Biology Chapter 5", "Cell structure and functions", 15),
+            StudySet(3, "History Dates", "World War II timeline", 30),
+            StudySet(4, "Math Formulas", "Algebra and geometry", 18)
         )
     }
 
     Scaffold(
+        containerColor = creamBg,
         topBar = {
             TopAppBar(
-                title = { Text("My Study Sets") },
+                title = {
+                    Column {
+                        Text(
+                            "My Study Sets",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        Text(
+                            "${studySets.size} sets",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = darkSage.copy(alpha = 0.7f)
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = lightSage,
+                    titleContentColor = darkSage
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Navigate to create set */ }
+                onClick = onNavigateToCreateSet,
+                containerColor = sageGreen,
+                contentColor = Color.White,
+                shape = CircleShape
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Study Set")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add Study Set",
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(studySets) { studySet ->
-                StudySetCard(studySet = studySet)
+        if (studySets.isEmpty()) {
+            // Empty state
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Book,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = Color.Gray.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "No study sets yet",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.Gray
+                )
+                Text(
+                    "Tap the + button to create your first one!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray.copy(alpha = 0.7f)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(studySets) { studySet ->
+                    StudySetCard(
+                        studySet = studySet,
+                        sageGreen = sageGreen,
+                        darkSage = darkSage
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun StudySetCard(studySet: StudySet) {
+fun StudySetCard(
+    studySet: StudySet,
+    sageGreen: Color,
+    darkSage: Color
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable { isExpanded = !isExpanded },
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = Color.White
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = studySet.title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = studySet.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "${studySet.cardCount} cards",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Icon circle
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(sageGreen.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Outlined.Style,
+                        contentDescription = null,
+                        tint = darkSage,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = studySet.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = darkSage
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = studySet.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Card count badge
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = sageGreen.copy(alpha = 0.15f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📚",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${studySet.cardCount} cards",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = darkSage
+                    )
+                }
+            }
+
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Divider(color = Color.LightGray.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = { /* TODO: Study */ }) {
+                        Text("Study", color = sageGreen, fontWeight = FontWeight.Bold)
+                    }
+                    TextButton(onClick = { /* TODO: Edit */ }) {
+                        Text("Edit", color = darkSage, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }
