@@ -10,10 +10,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,12 +34,6 @@ data class StudySet(
 fun StudySetListScreen(
     onNavigateToCreateSet: () -> Unit
 ) {
-    // Custom sage green colors
-    val sageGreen = Color(0xFF87A96B)
-    val lightSage = Color(0xFFC8D5B9)
-    val darkSage = Color(0xFF5F7C52)
-    val creamBg = Color(0xFFF5F5DC)
-
     // Mock data
     val studySets = remember {
         listOf(
@@ -52,7 +45,7 @@ fun StudySetListScreen(
     }
 
     Scaffold(
-        containerColor = creamBg,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -65,20 +58,20 @@ fun StudySetListScreen(
                         Text(
                             "${studySets.size} sets",
                             style = MaterialTheme.typography.bodySmall,
-                            color = darkSage.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = lightSage,
-                    titleContentColor = darkSage
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToCreateSet,
-                containerColor = sageGreen,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White,
                 shape = CircleShape
             ) {
@@ -101,7 +94,7 @@ fun StudySetListScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    Icons.Outlined.Book,
+                    Icons.Filled.Book,
                     contentDescription = null,
                     modifier = Modifier.size(80.dp),
                     tint = Color.Gray.copy(alpha = 0.3f)
@@ -127,11 +120,7 @@ fun StudySetListScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(studySets) { studySet ->
-                    StudySetCard(
-                        studySet = studySet,
-                        sageGreen = sageGreen,
-                        darkSage = darkSage
-                    )
+                    StudySetCard(studySet = studySet)
                 }
             }
         }
@@ -139,11 +128,7 @@ fun StudySetListScreen(
 }
 
 @Composable
-fun StudySetCard(
-    studySet: StudySet,
-    sageGreen: Color,
-    darkSage: Color
-) {
+fun StudySetCard(studySet: StudySet) {
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -151,7 +136,7 @@ fun StudySetCard(
             .fillMaxWidth()
             .animateContentSize()
             .clickable { isExpanded = !isExpanded },
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -170,13 +155,13 @@ fun StudySetCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(sageGreen.copy(alpha = 0.2f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Outlined.Style,
+                        Icons.Filled.Star,
                         contentDescription = null,
-                        tint = darkSage,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -188,7 +173,7 @@ fun StudySetCard(
                         text = studySet.title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = darkSage
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -204,7 +189,7 @@ fun StudySetCard(
             // Card count badge
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = sageGreen.copy(alpha = 0.15f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -219,7 +204,7 @@ fun StudySetCard(
                         text = "${studySet.cardCount} cards",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = darkSage
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -234,10 +219,18 @@ fun StudySetCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(onClick = { /* TODO: Study */ }) {
-                        Text("Study", color = sageGreen, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Study",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                     TextButton(onClick = { /* TODO: Edit */ }) {
-                        Text("Edit", color = darkSage, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Edit",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

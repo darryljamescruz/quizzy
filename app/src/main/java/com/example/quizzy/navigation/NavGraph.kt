@@ -6,6 +6,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.quizzy.ui.screens.CreateFlashcardScreen
 import com.example.quizzy.ui.screens.CreateSetScreen
 import com.example.quizzy.ui.screens.StudySetDetailScreen
 import com.example.quizzy.ui.screens.StudySetListScreen
@@ -32,7 +33,6 @@ fun NavGraph(navController: NavHostController) {
                     navController.popBackStack()
                 },
                 onSetCreated = { title ->
-                    // Navigate to detail screen after creating
                     navController.navigate(Screen.StudySetDetail.createRoute(title)) {
                         popUpTo(Screen.StudySetList.route)
                     }
@@ -54,7 +54,27 @@ fun NavGraph(navController: NavHostController) {
                     navController.popBackStack()
                 },
                 onAddFlashcard = {
-                    // TODO: Navigate to add flashcard screen later
+                    navController.navigate(Screen.CreateFlashcard.createRoute(setTitle))
+                }
+            )
+        }
+
+        // Create flashcard screen
+        composable(
+            route = Screen.CreateFlashcard.route,
+            arguments = listOf(
+                navArgument("setTitle") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val setTitle = backStackEntry.arguments?.getString("setTitle") ?: "Study Set"
+            CreateFlashcardScreen(
+                studySetTitle = setTitle,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onFlashcardCreated = {
+                    // Go back to detail screen after adding flashcard
+                    navController.popBackStack()
                 }
             )
         }

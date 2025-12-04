@@ -29,17 +29,11 @@ fun StudySetDetailScreen(
     onNavigateBack: () -> Unit,
     onAddFlashcard: () -> Unit
 ) {
-    // Custom colors
-    val sageGreen = Color(0xFF87A96B)
-    val lightSage = Color(0xFFC8D5B9)
-    val darkSage = Color(0xFF5F7C52)
-    val creamBg = Color(0xFFF5F5DC)
-
     // Mock flashcards - empty for new sets
     val flashcards = remember { mutableStateListOf<Flashcard>() }
 
     Scaffold(
-        containerColor = creamBg,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -52,7 +46,7 @@ fun StudySetDetailScreen(
                         Text(
                             "${flashcards.size} cards",
                             style = MaterialTheme.typography.bodySmall,
-                            color = darkSage.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
                     }
                 },
@@ -61,20 +55,20 @@ fun StudySetDetailScreen(
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = darkSage
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = lightSage,
-                    titleContentColor = darkSage
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddFlashcard,
-                containerColor = sageGreen,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Flashcard")
@@ -100,7 +94,7 @@ fun StudySetDetailScreen(
                     "Add your first flashcard!",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = darkSage
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -108,22 +102,6 @@ fun StudySetDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onAddFlashcard,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = sageGreen
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Flashcard")
-                }
             }
         } else {
             LazyColumn(

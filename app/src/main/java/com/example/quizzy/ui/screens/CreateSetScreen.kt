@@ -5,8 +5,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Title
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,17 +18,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun CreateSetScreen(
     onNavigateBack: () -> Unit,
-    onSetCreated: (String) -> Unit
+    onSetCreated: (String) -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
 
-    // Custom sage green colors
-    val sageGreen = Color(0xFF87A96B)
-    val lightSage = Color(0xFFC8D5B9)
-    val darkSage = Color(0xFF5F7C52)
-
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -42,13 +38,13 @@ fun CreateSetScreen(
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = darkSage
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = lightSage,
-                    titleContentColor = darkSage
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -64,7 +60,7 @@ fun CreateSetScreen(
             Text(
                 text = "Let's create something great!",
                 style = MaterialTheme.typography.headlineSmall,
-                color = darkSage,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -76,58 +72,77 @@ fun CreateSetScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Title field with icon
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Study Set Title") },
-                placeholder = { Text("e.g., Spanish Vocabulary") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Title,
-                        contentDescription = null,
-                        tint = sageGreen
-                    )
-                },
+            // Title field with white card background
+            Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = sageGreen,
-                    focusedLabelColor = sageGreen,
-                    cursorColor = sageGreen
-                )
-            )
-
-            // Description field with icon
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description (Optional)") },
-                placeholder = { Text("What's this study set about?") },
-                leadingIcon = {
-                    Icon(
-                        Icons.Outlined.Description,
-                        contentDescription = null,
-                        tint = sageGreen
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Study Set Title") },
+                    placeholder = { Text("e.g., Spanish Vocabulary") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Create,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White
                     )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = sageGreen,
-                    focusedLabelColor = sageGreen,
-                    cursorColor = sageGreen
                 )
-            )
+            }
+
+            // Description field with white card background
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description (Optional)") },
+                    placeholder = { Text("What's this study set about?") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White
+                    )
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Create button with icon
             Button(
                 onClick = {
-                    // TODO: Save to database later
                     if (title.isNotBlank()) {
                         onSetCreated(title)
                     }
@@ -136,7 +151,7 @@ fun CreateSetScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = sageGreen,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(16.dp),
