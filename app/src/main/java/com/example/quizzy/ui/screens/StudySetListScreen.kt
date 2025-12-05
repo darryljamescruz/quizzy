@@ -1,6 +1,5 @@
 package com.example.quizzy.ui.screens
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,8 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,33 +20,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-// Mock data class def
-data class StudySet(
-    val id: Int,
-    val title: String,
-    val description: String,
-    val cardCount: Int
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.data.models.StudySetWithCardCount
+import com.example.quizzy.ui.viewmodels.StudySetListViewModel
+import com.example.quizzy.ui.viewmodels.StudySetListViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySetListScreen(
     onNavigateToCreateSet: () -> Unit,
-    onNavigateToDetail: (StudySet) -> Unit = {},
-    onNavigateToStudyMode: (StudySet) -> Unit = {}
+    onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToStudyMode: (Long) -> Unit = {}
 ) {
-    // Mock data
-    val studySets = remember {
-        listOf(
-            StudySet(1, "Spanish Vocabulary", "Common phrases and expressions", 25),
-            StudySet(2, "Biology Chapter 5", "Cell structure and functions", 15),
-            StudySet(3, "History Dates", "World War II timeline", 30),
-            StudySet(4, "Math Formulas", "Algebra and geometry", 18)
-        )
-    }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetListViewModel = viewModel(
+        factory = StudySetListViewModelFactory(database.studySetDao())
+    )
+    val studySets by viewModel.studySets.collectAsState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,11 +118,15 @@ fun StudySetListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(studySets) { studySet ->
+                items(
+                    items = studySets,
+                    key = { it.studySet.setId }
+                ) { studySet ->
                     StudySetCard(
                         studySet = studySet,
                         onNavigateToDetail = onNavigateToDetail,
-                        onNavigateToStudyMode = onNavigateToStudyMode
+                        onNavigateToStudyMode = onNavigateToStudyMode,
+                        onDelete = { viewModel.deleteStudySet(studySet.studySet) }
                     )
                 }
             }
@@ -137,19 +136,50 @@ fun StudySetListScreen(
 
 @Composable
 fun StudySetCard(
-    studySet: StudySet,
-    onNavigateToDetail: (StudySet) -> Unit = {},
-    onNavigateToStudyMode: (StudySet) -> Unit = {}
+    studySet: StudySetWithCardCount,
+    onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToStudyMode: (Long) -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val entity = studySet.studySet
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Study Set?") },
+            text = {
+                Text("Are you sure you want to delete \"${entity.title}\"? This will also delete all ${studySet.cardCount} flashcards in this set.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
             .clickable {
-                // Navigate to detail screen when card is tapped
-                onNavigateToDetail(studySet)
+                // Navigate to study mode when card is tapped
+                onNavigateToStudyMode(entity.setId)
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(20.dp),
@@ -185,31 +215,75 @@ fun StudySetCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = studySet.title,
+                        text = entity.title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = studySet.description,
+                        text = entity.description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
                 }
 
-                // Expand/Collapse icon button
-                IconButton(
-                    onClick = { isExpanded = !isExpanded }
-                ) {
-                    Icon(
-                        imageVector = if (isExpanded)
-                            Icons.Filled.KeyboardArrowUp
-                        else
-                            Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                // Three-dot menu
+                Box {
+                    IconButton(
+                        onClick = { showMenu = !showMenu }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Edit Set")
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToDetail(entity.setId)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        "Delete Set",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
+                    }
                 }
             }
 
@@ -235,32 +309,6 @@ fun StudySetCard(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                }
-            }
-
-            if (isExpanded) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { onNavigateToStudyMode(studySet) }) {
-                        Text(
-                            "Study",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    TextButton(onClick = { onNavigateToDetail(studySet) }) {
-                        Text(
-                            "Edit",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         }

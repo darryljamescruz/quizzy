@@ -1,7 +1,12 @@
 package com.example.quizzy.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,33 +20,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.components.StudyCompletionDialog
+import com.example.quizzy.ui.viewmodels.StudyModeViewModel
+import com.example.quizzy.ui.viewmodels.StudyModeViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyModeScreen(
-    studySetTitle: String,
+    setId: Long,
     onNavigateBack: () -> Unit
 ) {
-    // Mock flashcards for now
-    val flashcards = remember {
-        listOf(
-            Flashcard(1, "Hola", "Hello (Spanish greeting)"),
-            Flashcard(2, "Gracias", "Thank you"),
-            Flashcard(3, "Buenos días", "Good morning"),
-            Flashcard(4, "Adiós", "Goodbye"),
-            Flashcard(5, "Por favor", "Please")
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudyModeViewModel = viewModel(
+        factory = StudyModeViewModelFactory(
+            database.flashcardDao(),
+            database.studySetDao(),
+            setId
         )
-    }
-
-    var currentIndex by remember { mutableStateOf(0) }
-    var isFlipped by remember { mutableStateOf(false) }
-    var knownCount by remember { mutableStateOf(0) }
-
-    val currentCard = flashcards.getOrNull(currentIndex)
-    val progress = if (flashcards.isEmpty()) 0f else (currentIndex + 1).toFloat() / flashcards.size
+    )
+    val cards by viewModel.cards.collectAsState()
+    val studySet by viewModel.studySet.collectAsState()
+    val currentCard = viewModel.currentCard
+    val progress = if (cards.isEmpty()) 0f else (viewModel.currentIndex + 1).toFloat() / cards.size
+    val knownCount = cards.count { it.isKnown }
+    val isLastCard = cards.isNotEmpty() && viewModel.currentIndex == cards.lastIndex
+    var showCompletionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -50,12 +60,12 @@ fun StudyModeScreen(
                 title = {
                     Column {
                         Text(
-                            studySetTitle,
+                            studySet?.title ?: "Study Set",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            "${currentIndex + 1} / ${flashcards.size}",
+                            if (cards.isEmpty()) "0 / 0" else "${viewModel.currentIndex + 1} / ${cards.size}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
@@ -135,7 +145,7 @@ fun StudyModeScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "$knownCount known",
+                        text = "$knownCount known",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -145,16 +155,48 @@ fun StudyModeScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Flip card
-                FlipCard(
-                    term = currentCard.term,
-                    definition = currentCard.definition,
-                    isFlipped = isFlipped,
-                    onFlip = { isFlipped = !isFlipped },
+                // Flip card with slide animation
+                AnimatedContent(
+                    targetState = viewModel.currentIndex,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            // Sliding to next card (left to right exit, right to left enter)
+                            slideInHorizontally(
+                                initialOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(300)
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> -fullWidth },
+                                animationSpec = tween(300)
+                            )
+                        } else {
+                            // Sliding to previous card (right to left exit, left to right enter)
+                            slideInHorizontally(
+                                initialOffsetX = { fullWidth -> -fullWidth },
+                                animationSpec = tween(300)
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(300)
+                            )
+                        }
+                    },
+                    label = "cardSlide",
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                )
+                ) { index ->
+                    val card = cards.getOrNull(index)
+                    if (card != null) {
+                        key(card.cardId) {
+                            FlipCard(
+                                term = card.term,
+                                definition = card.definition,
+                                isFlipped = viewModel.showAnswer,
+                                onFlip = viewModel::flipCard,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -165,13 +207,12 @@ fun StudyModeScreen(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            // Mark as unknown (just move to next for now)
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
-                            }
+                            viewModel.markUnknown()
+                            if (isLastCard) showCompletionDialog = true
                         },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Red.copy(alpha = 0.7f)
@@ -188,13 +229,12 @@ fun StudyModeScreen(
 
                     Button(
                         onClick = {
-                            knownCount++
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
-                            }
+                            viewModel.markKnown()
+                            if (isLastCard) showCompletionDialog = true
                         },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -218,32 +258,40 @@ fun StudyModeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(
-                        onClick = {
-                            if (currentIndex > 0) {
-                                currentIndex--
-                                isFlipped = false
-                            }
-                        },
-                        enabled = currentIndex > 0
+                        onClick = { viewModel.previousCard() },
+                        enabled = viewModel.currentIndex > 0
                     ) {
                         Text("← Previous")
                     }
 
                     TextButton(
                         onClick = {
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
+                            if (!isLastCard) {
+                                viewModel.nextCard()
                             } else {
-                                onNavigateBack()
+                                showCompletionDialog = true
                             }
                         }
                     ) {
-                        Text(if (currentIndex < flashcards.size - 1) "Next →" else "Finish")
+                        Text(if (!isLastCard) "Next →" else "Finish")
                     }
                 }
             }
         }
+    }
+
+    if (showCompletionDialog) {
+        StudyCompletionDialog(
+            onStudyAgain = {
+                viewModel.resetProgress()
+                showCompletionDialog = false
+            },
+            onBackToList = {
+                showCompletionDialog = false
+                onNavigateBack()
+            },
+            onDismissRequest = { showCompletionDialog = false }
+        )
     }
 }
 
@@ -257,7 +305,11 @@ fun FlipCard(
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = tween(durationMillis = 400),
+        animationSpec = if (isFlipped) {
+            tween(durationMillis = 400)
+        } else {
+            snap()
+        },
         label = "cardFlip"
     )
 
@@ -271,10 +323,7 @@ fun FlipCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFlipped)
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            else
-                Color.White
+            containerColor = Color.White
         )
     ) {
         Box(
@@ -287,55 +336,70 @@ fun FlipCard(
                 // Front side (term)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = "TERM",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "QUESTION",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = term,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF2C3E50)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Tap to flip",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        text = "💡 Tap to reveal answer",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray.copy(alpha = 0.6f)
                     )
                 }
             } else {
                 // Back side (definition) - flipped
                 Column(
-                    modifier = Modifier.graphicsLayer { rotationY = 180f },
+                    modifier = Modifier
+                        .graphicsLayer { rotationY = 180f }
+                        .fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = "DEFINITION",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "ANSWER",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = definition,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF2C3E50)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Tap to flip back",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        text = "💡 Tap to see question again",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray.copy(alpha = 0.6f)
                     )
                 }
             }

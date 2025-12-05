@@ -3,34 +3,51 @@ package com.example.quizzy.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-// Mock flashcard for now
-data class Flashcard(
-    val id: Int,
-    val term: String,
-    val definition: String
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.data.models.Flashcard
+import com.example.quizzy.ui.viewmodels.StudySetViewModel
+import com.example.quizzy.ui.viewmodels.StudySetViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySetDetailScreen(
-    studySetTitle: String,
+    setId: Long,
     onNavigateBack: () -> Unit,
     onAddFlashcard: () -> Unit
 ) {
-    // Mock flashcards - empty for new sets
-    val flashcards = remember { mutableStateListOf<Flashcard>() }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetViewModel = viewModel(
+        factory = StudySetViewModelFactory(
+            database.studySetDao(),
+            database.flashcardDao(),
+            setId
+        )
+    )
+    val studySet by viewModel.studySet.collectAsState()
+    val flashcards by viewModel.flashcards.collectAsState()
+    val title = studySet?.title ?: "Study Set"
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -39,7 +56,7 @@ fun StudySetDetailScreen(
                 title = { 
                     Column {
                         Text(
-                            studySetTitle,
+                            title,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -122,8 +139,23 @@ fun StudySetDetailScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(flashcards) { flashcard ->
-                    FlashcardListItem(flashcard)
+                itemsIndexed(
+                    items = flashcards,
+                    key = { _, flashcard -> flashcard.cardId }
+                ) { index, flashcard ->
+                    FlashcardListItem(
+                        flashcard = flashcard,
+                        cardNumber = index + 1,
+                        onEdit = { updatedTerm, updatedDefinition ->
+                            viewModel.updateFlashcard(
+                                flashcard.copy(
+                                    term = updatedTerm,
+                                    definition = updatedDefinition
+                                )
+                            )
+                        },
+                        onDelete = { viewModel.deleteFlashcard(flashcard) }
+                    )
                 }
             }
         }
@@ -131,7 +163,46 @@ fun StudySetDetailScreen(
 }
 
 @Composable
-fun FlashcardListItem(flashcard: Flashcard) {
+fun FlashcardListItem(
+    flashcard: Flashcard,
+    cardNumber: Int,
+    onEdit: (term: String, definition: String) -> Unit,
+    onDelete: () -> Unit
+) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editedTerm by remember { mutableStateOf(flashcard.term) }
+    var editedDefinition by remember { mutableStateOf(flashcard.definition) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Flashcard?") },
+            text = {
+                Text("Are you sure you want to delete this flashcard?\n\nTerm: \"${flashcard.term}\"")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -141,17 +212,122 @@ fun FlashcardListItem(flashcard: Flashcard) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = flashcard.term,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = flashcard.definition,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
-            )
+            // Header with card number and action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Question #$cardNumber",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row {
+                    if (isEditing) {
+                        // Save and Cancel buttons when editing
+                        TextButton(
+                            onClick = {
+                                isEditing = false
+                                editedTerm = flashcard.term
+                                editedDefinition = flashcard.definition
+                            }
+                        ) {
+                            Text("Cancel", color = Color.Gray)
+                        }
+                        TextButton(
+                            onClick = {
+                                onEdit(editedTerm, editedDefinition)
+                                isEditing = false
+                            },
+                            enabled = editedTerm.isNotBlank() && editedDefinition.isNotBlank()
+                        ) {
+                            Text("Save", fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        // Edit and Delete buttons when not editing
+                        IconButton(onClick = { isEditing = true }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (isEditing) {
+                // Edit mode - show text fields
+                OutlinedTextField(
+                    value = editedTerm,
+                    onValueChange = { editedTerm = it },
+                    label = { Text("Question") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = editedDefinition,
+                    onValueChange = { editedDefinition = it },
+                    label = { Text("Answer") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            } else {
+                // Display mode - show text
+                Column {
+                    Text(
+                        text = "Question",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = flashcard.term,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Answer",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = flashcard.definition,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.DarkGray
+                    )
+                }
+            }
         }
     }
 }
