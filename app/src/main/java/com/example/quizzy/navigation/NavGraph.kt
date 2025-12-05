@@ -8,7 +8,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.quizzy.ui.screens.CreateFlashcardScreen
 import com.example.quizzy.ui.screens.CreateSetScreen
+import com.example.quizzy.ui.screens.MultipleChoiceScreen
 import com.example.quizzy.ui.screens.StudyModeScreen
+import com.example.quizzy.ui.screens.StudyModeSelectionScreen
 import com.example.quizzy.ui.screens.StudySetDetailScreen
 import com.example.quizzy.ui.screens.StudySetListScreen
 
@@ -28,7 +30,7 @@ fun NavGraph(navController: NavHostController) {
                     navController.navigate(Screen.StudySetDetail.createRoute(setId))
                 },
                 onNavigateToStudyMode = { setId ->
-                    navController.navigate(Screen.StudyMode.createRoute(setId))
+                    navController.navigate(Screen.StudyModeSelection.createRoute(setId))
                 }
             )
         }
@@ -85,7 +87,29 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
-        // Study mode screen
+        // Study mode selection screen
+        composable(
+            route = Screen.StudyModeSelection.route,
+            arguments = listOf(
+                navArgument("setId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
+            StudyModeSelectionScreen(
+                setId = setId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onSelectFlashcards = { setId ->
+                    navController.navigate(Screen.StudyMode.createRoute(setId))
+                },
+                onSelectMultipleChoice = { setId ->
+                    navController.navigate(Screen.MultipleChoice.createRoute(setId))
+                }
+            )
+        }
+
+        // Flashcards study mode screen
         composable(
             route = Screen.StudyMode.route,
             arguments = listOf(
@@ -94,6 +118,22 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
             StudyModeScreen(
+                setId = setId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Multiple choice study mode screen
+        composable(
+            route = Screen.MultipleChoice.route,
+            arguments = listOf(
+                navArgument("setId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
+            MultipleChoiceScreen(
                 setId = setId,
                 onNavigateBack = {
                     navController.popBackStack()

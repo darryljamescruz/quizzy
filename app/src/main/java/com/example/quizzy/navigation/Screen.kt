@@ -12,4 +12,10 @@ sealed class Screen(val route: String) {
     object StudyMode : Screen("study_mode/{setId}") {
         fun createRoute(setId: Long) = "study_mode/$setId"
     }
+    object StudyModeSelection : Screen("study_mode_selection/{setId}") {
+        fun createRoute(setId: Long) = "study_mode_selection/$setId"
+    }
+    object MultipleChoice : Screen("multiple_choice/{setId}") {
+        fun createRoute(setId: Long) = "multiple_choice/$setId"
+    }
 }

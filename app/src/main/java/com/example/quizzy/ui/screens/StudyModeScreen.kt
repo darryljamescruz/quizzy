@@ -1,7 +1,12 @@
 package com.example.quizzy.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -151,16 +157,48 @@ fun StudyModeScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Flip card
-                FlipCard(
-                    term = currentCard.term,
-                    definition = currentCard.definition,
-                    isFlipped = viewModel.showAnswer,
-                    onFlip = viewModel::flipCard,
+                // Flip card with slide animation
+                AnimatedContent(
+                    targetState = viewModel.currentIndex,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            // Sliding to next card (left to right exit, right to left enter)
+                            slideInHorizontally(
+                                initialOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(300)
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> -fullWidth },
+                                animationSpec = tween(300)
+                            )
+                        } else {
+                            // Sliding to previous card (right to left exit, left to right enter)
+                            slideInHorizontally(
+                                initialOffsetX = { fullWidth -> -fullWidth },
+                                animationSpec = tween(300)
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(300)
+                            )
+                        }
+                    },
+                    label = "cardSlide",
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                )
+                ) { index ->
+                    val card = cards.getOrNull(index)
+                    if (card != null) {
+                        key(card.cardId) {
+                            FlipCard(
+                                term = card.term,
+                                definition = card.definition,
+                                isFlipped = viewModel.showAnswer,
+                                onFlip = viewModel::flipCard,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -255,7 +293,11 @@ fun FlipCard(
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = tween(durationMillis = 400),
+        animationSpec = if (isFlipped) {
+            tween(durationMillis = 400)
+        } else {
+            snap()
+        },
         label = "cardFlip"
     )
 
@@ -269,10 +311,7 @@ fun FlipCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFlipped)
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            else
-                Color.White
+            containerColor = Color.White
         )
     ) {
         Box(
@@ -285,55 +324,70 @@ fun FlipCard(
                 // Front side (term)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = "TERM",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "QUESTION",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = term,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF2C3E50)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Tap to flip",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        text = "💡 Tap to reveal answer",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray.copy(alpha = 0.6f)
                     )
                 }
             } else {
                 // Back side (definition) - flipped
                 Column(
-                    modifier = Modifier.graphicsLayer { rotationY = 180f },
+                    modifier = Modifier
+                        .graphicsLayer { rotationY = 180f }
+                        .fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = "DEFINITION",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "ANSWER",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text(
                         text = definition,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = Color(0xFF2C3E50)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Tap to flip back",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        text = "💡 Tap to see question again",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray.copy(alpha = 0.6f)
                     )
                 }
             }
