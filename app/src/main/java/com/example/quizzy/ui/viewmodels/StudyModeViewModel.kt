@@ -77,20 +77,22 @@ class StudyModeViewModel(
         }
     }
 
-    fun markKnown() {
-        val card = currentCard ?: return
-        viewModelScope.launch(Dispatchers.IO) {
-            flashcardDao.updateKnownStatus(card.cardId, true)
-        }
-        advanceAfterAnswer()
+    fun markKnown(autoAdvance: Boolean = true) {
+        updateKnownStatus(isKnown = true, autoAdvance = autoAdvance)
     }
 
-    fun markUnknown() {
+    fun markUnknown(autoAdvance: Boolean = true) {
+        updateKnownStatus(isKnown = false, autoAdvance = autoAdvance)
+    }
+
+    private fun updateKnownStatus(isKnown: Boolean, autoAdvance: Boolean) {
         val card = currentCard ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            flashcardDao.updateKnownStatus(card.cardId, false)
+            flashcardDao.updateKnownStatus(card.cardId, isKnown)
         }
-        advanceAfterAnswer()
+        if (autoAdvance) {
+            advanceAfterAnswer()
+        }
     }
 
     private fun advanceAfterAnswer() {
@@ -98,5 +100,11 @@ class StudyModeViewModel(
         if (currentIndex < _cards.value.lastIndex) {
             currentIndex++
         }
+    }
+
+    fun resetProgress() {
+        if (_cards.value.isEmpty()) return
+        currentIndex = 0
+        showAnswer = false
     }
 }

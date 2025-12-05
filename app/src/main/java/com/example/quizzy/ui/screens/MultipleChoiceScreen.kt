@@ -1,13 +1,16 @@
 package com.example.quizzy.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -18,12 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.components.StudyCompletionDialog
 import com.example.quizzy.ui.viewmodels.StudyModeViewModel
 import com.example.quizzy.ui.viewmodels.StudyModeViewModelFactory
 
@@ -71,6 +76,7 @@ fun MultipleChoiceScreen(
 
     var selectedAnswer by remember(viewModel.currentIndex) { mutableStateOf<String?>(null) }
     var showResult by remember(viewModel.currentIndex) { mutableStateOf(false) }
+    var showCompletionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -244,9 +250,9 @@ fun MultipleChoiceScreen(
                                     showResult = true
                                     // Mark as correct/incorrect
                                     if (choice == currentCard.definition) {
-                                        viewModel.markKnown()
+                                        viewModel.markKnown(autoAdvance = false)
                                     } else {
-                                        viewModel.markUnknown()
+                                        viewModel.markUnknown(autoAdvance = false)
                                     }
                                 }
                             }
@@ -254,7 +260,77 @@ fun MultipleChoiceScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AnimatedVisibility(visible = showResult) {
+                    val answeredCorrectly = selectedAnswer == currentCard.definition
+                    val feedbackColor = if (answeredCorrectly) Color(0xFF2E7D32) else Color(0xFFC62828)
+                    val gradientColors = if (answeredCorrectly) {
+                        listOf(Color(0xFF43A047), Color(0xFF81C784))
+                    } else {
+                        listOf(Color(0xFFE53935), Color(0xFFFF8A65))
+                    }
+                    val titleText = if (answeredCorrectly) "Correct answer!" else "Nice try!"
+                    val messageText = if (answeredCorrectly) {
+                        "Great job—keep the momentum going."
+                    } else {
+                        "Correct answer: ${currentCard.definition}"
+                    }
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, feedbackColor.copy(alpha = 0.5f)),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.linearGradient(gradientColors),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .padding(20.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color.White.copy(alpha = 0.2f)
+                                ) {
+                                    Icon(
+                                        imageVector = if (answeredCorrectly) Icons.Default.Check else Icons.Default.Close,
+                                        contentDescription = if (answeredCorrectly) "Correct" else "Incorrect",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .padding(10.dp)
+                                    )
+                                }
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = titleText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = messageText,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.White.copy(alpha = 0.9f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Next button (only show after answering)
                 if (showResult) {
@@ -265,7 +341,7 @@ fun MultipleChoiceScreen(
                                 selectedAnswer = null
                                 showResult = false
                             } else {
-                                onNavigateBack()
+                                showCompletionDialog = true
                             }
                         },
                         modifier = Modifier
@@ -285,6 +361,22 @@ fun MultipleChoiceScreen(
                 }
             }
         }
+    }
+
+    if (showCompletionDialog) {
+        StudyCompletionDialog(
+            onStudyAgain = {
+                viewModel.resetProgress()
+                selectedAnswer = null
+                showResult = false
+                showCompletionDialog = false
+            },
+            onBackToList = {
+                showCompletionDialog = false
+                onNavigateBack()
+            },
+            onDismissRequest = { showCompletionDialog = false }
+        )
     }
 }
 
