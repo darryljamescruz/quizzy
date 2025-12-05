@@ -6,21 +6,44 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.viewmodels.StudySetViewModel
+import com.example.quizzy.ui.viewmodels.StudySetViewModelFactory
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateFlashcardScreen(
-    studySetTitle: String,
+    setId: Long,
     onNavigateBack: () -> Unit,
     onFlashcardCreated: () -> Unit = {}
 ) {
     var term by remember { mutableStateOf("") }
     var definition by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetViewModel = viewModel(
+        factory = StudySetViewModelFactory(
+            database.studySetDao(),
+            database.flashcardDao(),
+            setId
+        )
+    )
+    val studySet by viewModel.studySet.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -33,7 +56,7 @@ fun CreateFlashcardScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            studySetTitle,
+                            studySet?.title ?: "Study Set",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
@@ -172,7 +195,10 @@ fun CreateFlashcardScreen(
             Button(
                 onClick = {
                     if (term.isNotBlank() && definition.isNotBlank()) {
-                        onFlashcardCreated()
+                        coroutineScope.launch {
+                            viewModel.addFlashcard(term, definition)
+                            onFlashcardCreated()
+                        }
                     }
                 },
                 modifier = Modifier

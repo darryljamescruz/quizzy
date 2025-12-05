@@ -8,29 +8,41 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-// Mock flashcard for now
-data class Flashcard(
-    val id: Int,
-    val term: String,
-    val definition: String
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.data.models.Flashcard
+import com.example.quizzy.ui.viewmodels.StudySetViewModel
+import com.example.quizzy.ui.viewmodels.StudySetViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySetDetailScreen(
-    studySetTitle: String,
+    setId: Long,
     onNavigateBack: () -> Unit,
     onAddFlashcard: () -> Unit
 ) {
-    // Mock flashcards - empty for new sets
-    val flashcards = remember { mutableStateListOf<Flashcard>() }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetViewModel = viewModel(
+        factory = StudySetViewModelFactory(
+            database.studySetDao(),
+            database.flashcardDao(),
+            setId
+        )
+    )
+    val studySet by viewModel.studySet.collectAsState()
+    val flashcards by viewModel.flashcards.collectAsState()
+    val title = studySet?.title ?: "Study Set"
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -39,7 +51,7 @@ fun StudySetDetailScreen(
                 title = { 
                     Column {
                         Text(
-                            studySetTitle,
+                            title,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
@@ -122,7 +134,10 @@ fun StudySetDetailScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(flashcards) { flashcard ->
+                items(
+                    items = flashcards,
+                    key = { it.cardId }
+                ) { flashcard ->
                     FlashcardListItem(flashcard)
                 }
             }

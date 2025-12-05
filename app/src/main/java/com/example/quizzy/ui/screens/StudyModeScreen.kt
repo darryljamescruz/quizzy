@@ -10,38 +10,44 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.viewmodels.StudyModeViewModel
+import com.example.quizzy.ui.viewmodels.StudyModeViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyModeScreen(
-    studySetTitle: String,
+    setId: Long,
     onNavigateBack: () -> Unit
 ) {
-    // Mock flashcards for now
-    val flashcards = remember {
-        listOf(
-            Flashcard(1, "Hola", "Hello (Spanish greeting)"),
-            Flashcard(2, "Gracias", "Thank you"),
-            Flashcard(3, "Buenos días", "Good morning"),
-            Flashcard(4, "Adiós", "Goodbye"),
-            Flashcard(5, "Por favor", "Please")
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudyModeViewModel = viewModel(
+        factory = StudyModeViewModelFactory(
+            database.flashcardDao(),
+            database.studySetDao(),
+            setId
         )
-    }
-
-    var currentIndex by remember { mutableStateOf(0) }
-    var isFlipped by remember { mutableStateOf(false) }
-    var knownCount by remember { mutableStateOf(0) }
-
-    val currentCard = flashcards.getOrNull(currentIndex)
-    val progress = if (flashcards.isEmpty()) 0f else (currentIndex + 1).toFloat() / flashcards.size
+    )
+    val cards by viewModel.cards.collectAsState()
+    val studySet by viewModel.studySet.collectAsState()
+    val currentCard = viewModel.currentCard
+    val progress = if (cards.isEmpty()) 0f else (viewModel.currentIndex + 1).toFloat() / cards.size
+    val knownCount = cards.count { it.isKnown }
+    val isLastCard = cards.isNotEmpty() && viewModel.currentIndex == cards.lastIndex
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -50,12 +56,12 @@ fun StudyModeScreen(
                 title = {
                     Column {
                         Text(
-                            studySetTitle,
+                            studySet?.title ?: "Study Set",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            "${currentIndex + 1} / ${flashcards.size}",
+                            if (cards.isEmpty()) "0 / 0" else "${viewModel.currentIndex + 1} / ${cards.size}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )
@@ -135,7 +141,7 @@ fun StudyModeScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "$knownCount known",
+                        text = "$knownCount known",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -149,8 +155,8 @@ fun StudyModeScreen(
                 FlipCard(
                     term = currentCard.term,
                     definition = currentCard.definition,
-                    isFlipped = isFlipped,
-                    onFlip = { isFlipped = !isFlipped },
+                    isFlipped = viewModel.showAnswer,
+                    onFlip = viewModel::flipCard,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -165,13 +171,12 @@ fun StudyModeScreen(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            // Mark as unknown (just move to next for now)
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
-                            }
+                            viewModel.markUnknown()
+                            if (isLastCard) onNavigateBack()
                         },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color.Red.copy(alpha = 0.7f)
@@ -188,13 +193,12 @@ fun StudyModeScreen(
 
                     Button(
                         onClick = {
-                            knownCount++
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
-                            }
+                            viewModel.markKnown()
+                            if (isLastCard) onNavigateBack()
                         },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -218,28 +222,22 @@ fun StudyModeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(
-                        onClick = {
-                            if (currentIndex > 0) {
-                                currentIndex--
-                                isFlipped = false
-                            }
-                        },
-                        enabled = currentIndex > 0
+                        onClick = { viewModel.previousCard() },
+                        enabled = viewModel.currentIndex > 0
                     ) {
                         Text("← Previous")
                     }
 
                     TextButton(
                         onClick = {
-                            if (currentIndex < flashcards.size - 1) {
-                                currentIndex++
-                                isFlipped = false
+                            if (!isLastCard) {
+                                viewModel.nextCard()
                             } else {
                                 onNavigateBack()
                             }
                         }
                     ) {
-                        Text(if (currentIndex < flashcards.size - 1) "Next →" else "Finish")
+                        Text(if (!isLastCard) "Next →" else "Finish")
                     }
                 }
             }

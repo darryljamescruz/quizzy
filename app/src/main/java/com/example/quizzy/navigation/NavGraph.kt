@@ -24,11 +24,11 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateToCreateSet = {
                     navController.navigate(Screen.CreateSet.route)
                 },
-                onNavigateToDetail = { studySet ->
-                    navController.navigate(Screen.StudySetDetail.createRoute(studySet.title))
+                onNavigateToDetail = { setId ->
+                    navController.navigate(Screen.StudySetDetail.createRoute(setId))
                 },
-                onNavigateToStudyMode = { studySet ->
-                    navController.navigate(Screen.StudyMode.createRoute(studySet.title))
+                onNavigateToStudyMode = { setId ->
+                    navController.navigate(Screen.StudyMode.createRoute(setId))
                 }
             )
         }
@@ -39,8 +39,8 @@ fun NavGraph(navController: NavHostController) {
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onSetCreated = { title ->
-                    navController.navigate(Screen.StudySetDetail.createRoute(title)) {
+                onSetCreated = { setId ->
+                    navController.navigate(Screen.StudySetDetail.createRoute(setId)) {
                         popUpTo(Screen.StudySetList.route)
                     }
                 }
@@ -51,17 +51,17 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = Screen.StudySetDetail.route,
             arguments = listOf(
-                navArgument("setTitle") { type = NavType.StringType }
+                navArgument("setId") { type = NavType.LongType }
             )
         ) { backStackEntry ->
-            val setTitle = backStackEntry.arguments?.getString("setTitle") ?: "Study Set"
+            val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
             StudySetDetailScreen(
-                studySetTitle = setTitle,
+                setId = setId,
                 onNavigateBack = {
                     navController.popBackStack(Screen.StudySetList.route, inclusive = false)
                 },
                 onAddFlashcard = {
-                    navController.navigate(Screen.CreateFlashcard.createRoute(setTitle))
+                    navController.navigate(Screen.CreateFlashcard.createRoute(setId))
                 }
             )
         }
@@ -70,12 +70,12 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = Screen.CreateFlashcard.route,
             arguments = listOf(
-                navArgument("setTitle") { type = NavType.StringType }
+                navArgument("setId") { type = NavType.LongType }
             )
         ) { backStackEntry ->
-            val setTitle = backStackEntry.arguments?.getString("setTitle") ?: "Study Set"
+            val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
             CreateFlashcardScreen(
-                studySetTitle = setTitle,
+                setId = setId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
@@ -89,12 +89,12 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = Screen.StudyMode.route,
             arguments = listOf(
-                navArgument("setTitle") { type = NavType.StringType }
+                navArgument("setId") { type = NavType.LongType }
             )
         ) { backStackEntry ->
-            val setTitle = backStackEntry.arguments?.getString("setTitle") ?: "Study Set"
+            val setId = backStackEntry.arguments?.getLong("setId") ?: 0L
             StudyModeScreen(
-                studySetTitle = setTitle,
+                setId = setId,
                 onNavigateBack = {
                     navController.popBackStack()
                 }

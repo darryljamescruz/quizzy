@@ -9,17 +9,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.viewmodels.StudySetListViewModel
+import com.example.quizzy.ui.viewmodels.StudySetListViewModelFactory
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSetScreen(
     onNavigateBack: () -> Unit,
-    onSetCreated: (String) -> Unit = {}
+    onSetCreated: (Long) -> Unit = {}
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetListViewModel = viewModel(
+        factory = StudySetListViewModelFactory(database.studySetDao())
+    )
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -168,7 +180,10 @@ fun CreateSetScreen(
             Button(
                 onClick = {
                     if (title.isNotBlank()) {
-                        onSetCreated(title)
+                        coroutineScope.launch {
+                            val newSetId = viewModel.createStudySet(title, description)
+                            onSetCreated(newSetId)
+                        }
                     }
                 },
                 modifier = Modifier

@@ -20,33 +20,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-// Mock data class def
-data class StudySet(
-    val id: Int,
-    val title: String,
-    val description: String,
-    val cardCount: Int
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.data.models.StudySetWithCardCount
+import com.example.quizzy.ui.viewmodels.StudySetListViewModel
+import com.example.quizzy.ui.viewmodels.StudySetListViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySetListScreen(
     onNavigateToCreateSet: () -> Unit,
-    onNavigateToDetail: (StudySet) -> Unit = {},
-    onNavigateToStudyMode: (StudySet) -> Unit = {}
+    onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToStudyMode: (Long) -> Unit = {}
 ) {
-    // Mock data
-    val studySets = remember {
-        listOf(
-            StudySet(1, "Spanish Vocabulary", "Common phrases and expressions", 25),
-            StudySet(2, "Biology Chapter 5", "Cell structure and functions", 15),
-            StudySet(3, "History Dates", "World War II timeline", 30),
-            StudySet(4, "Math Formulas", "Algebra and geometry", 18)
-        )
-    }
+    val context = LocalContext.current
+    val database = remember { FlashcardDatabase.getDatabase(context) }
+    val viewModel: StudySetListViewModel = viewModel(
+        factory = StudySetListViewModelFactory(database.studySetDao())
+    )
+    val studySets by viewModel.studySets.collectAsState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,7 +118,10 @@ fun StudySetListScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(studySets) { studySet ->
+                items(
+                    items = studySets,
+                    key = { it.studySet.setId }
+                ) { studySet ->
                     StudySetCard(
                         studySet = studySet,
                         onNavigateToDetail = onNavigateToDetail,
@@ -137,11 +135,12 @@ fun StudySetListScreen(
 
 @Composable
 fun StudySetCard(
-    studySet: StudySet,
-    onNavigateToDetail: (StudySet) -> Unit = {},
-    onNavigateToStudyMode: (StudySet) -> Unit = {}
+    studySet: StudySetWithCardCount,
+    onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToStudyMode: (Long) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val entity = studySet.studySet
 
     Card(
         modifier = Modifier
@@ -149,7 +148,7 @@ fun StudySetCard(
             .animateContentSize()
             .clickable {
                 // Navigate to detail screen when card is tapped
-                onNavigateToDetail(studySet)
+                onNavigateToDetail(entity.setId)
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(20.dp),
@@ -185,14 +184,14 @@ fun StudySetCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = studySet.title,
+                        text = entity.title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = studySet.description,
+                        text = entity.description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -247,14 +246,14 @@ fun StudySetCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = { onNavigateToStudyMode(studySet) }) {
+                    TextButton(onClick = { onNavigateToStudyMode(entity.setId) }) {
                         Text(
                             "Study",
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    TextButton(onClick = { onNavigateToDetail(studySet) }) {
+                    TextButton(onClick = { onNavigateToDetail(entity.setId) }) {
                         Text(
                             "Edit",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
