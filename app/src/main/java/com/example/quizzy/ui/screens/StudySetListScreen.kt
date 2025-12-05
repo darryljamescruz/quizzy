@@ -1,6 +1,5 @@
 package com.example.quizzy.ui.screens
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,8 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -125,7 +125,8 @@ fun StudySetListScreen(
                     StudySetCard(
                         studySet = studySet,
                         onNavigateToDetail = onNavigateToDetail,
-                        onNavigateToStudyMode = onNavigateToStudyMode
+                        onNavigateToStudyMode = onNavigateToStudyMode,
+                        onDelete = { viewModel.deleteStudySet(studySet.studySet) }
                     )
                 }
             }
@@ -137,18 +138,48 @@ fun StudySetListScreen(
 fun StudySetCard(
     studySet: StudySetWithCardCount,
     onNavigateToDetail: (Long) -> Unit = {},
-    onNavigateToStudyMode: (Long) -> Unit = {}
+    onNavigateToStudyMode: (Long) -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val entity = studySet.studySet
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Study Set?") },
+            text = {
+                Text("Are you sure you want to delete \"${entity.title}\"? This will also delete all ${studySet.cardCount} flashcards in this set.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
             .clickable {
-                // Navigate to detail screen when card is tapped
-                onNavigateToDetail(entity.setId)
+                // Navigate to study mode when card is tapped
+                onNavigateToStudyMode(entity.setId)
             },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(20.dp),
@@ -197,18 +228,62 @@ fun StudySetCard(
                     )
                 }
 
-                // Expand/Collapse icon button
-                IconButton(
-                    onClick = { isExpanded = !isExpanded }
-                ) {
-                    Icon(
-                        imageVector = if (isExpanded)
-                            Icons.Filled.KeyboardArrowUp
-                        else
-                            Icons.Filled.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                // Three-dot menu
+                Box {
+                    IconButton(
+                        onClick = { showMenu = !showMenu }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Edit Set")
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToDetail(entity.setId)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        "Delete Set",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
+                    }
                 }
             }
 
@@ -234,32 +309,6 @@ fun StudySetCard(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                }
-            }
-
-            if (isExpanded) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Divider(color = Color.LightGray.copy(alpha = 0.3f))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { onNavigateToStudyMode(entity.setId) }) {
-                        Text(
-                            "Study",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    TextButton(onClick = { onNavigateToDetail(entity.setId) }) {
-                        Text(
-                            "Edit",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         }
