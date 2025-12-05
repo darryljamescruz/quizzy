@@ -55,6 +55,12 @@ class StudySetViewModel(
         }
     }
 
+    fun updateFlashcard(flashcard: Flashcard) {
+        viewModelScope.launch(Dispatchers.IO) {
+            flashcardDao.updateFlashcard(flashcard)
+        }
+    }
+
     fun deleteFlashcard(flashcard: Flashcard) {
         viewModelScope.launch(Dispatchers.IO) {
             flashcardDao.deleteFlashcard(flashcard)
