@@ -15,11 +15,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.quizzy.data.FlashcardDatabase
+import com.example.quizzy.ui.components.StudyCompletionDialog
 import com.example.quizzy.ui.viewmodels.StudyModeViewModel
 import com.example.quizzy.ui.viewmodels.StudyModeViewModelFactory
 
@@ -54,6 +51,7 @@ fun StudyModeScreen(
     val progress = if (cards.isEmpty()) 0f else (viewModel.currentIndex + 1).toFloat() / cards.size
     val knownCount = cards.count { it.isKnown }
     val isLastCard = cards.isNotEmpty() && viewModel.currentIndex == cards.lastIndex
+    var showCompletionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -210,7 +208,7 @@ fun StudyModeScreen(
                     OutlinedButton(
                         onClick = {
                             viewModel.markUnknown()
-                            if (isLastCard) onNavigateBack()
+                            if (isLastCard) showCompletionDialog = true
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -232,7 +230,7 @@ fun StudyModeScreen(
                     Button(
                         onClick = {
                             viewModel.markKnown()
-                            if (isLastCard) onNavigateBack()
+                            if (isLastCard) showCompletionDialog = true
                         },
                         modifier = Modifier
                             .weight(1f)
@@ -271,7 +269,7 @@ fun StudyModeScreen(
                             if (!isLastCard) {
                                 viewModel.nextCard()
                             } else {
-                                onNavigateBack()
+                                showCompletionDialog = true
                             }
                         }
                     ) {
@@ -280,6 +278,20 @@ fun StudyModeScreen(
                 }
             }
         }
+    }
+
+    if (showCompletionDialog) {
+        StudyCompletionDialog(
+            onStudyAgain = {
+                viewModel.resetProgress()
+                showCompletionDialog = false
+            },
+            onBackToList = {
+                showCompletionDialog = false
+                onNavigateBack()
+            },
+            onDismissRequest = { showCompletionDialog = false }
+        )
     }
 }
 
