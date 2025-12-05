@@ -1,6 +1,7 @@
 package com.example.quizzy.navigation
 
 sealed class Screen(val route: String) {
+    object Welcome : Screen("welcome")
     object StudySetList : Screen("study_set_list")
     object CreateSet : Screen("create_set")
     object StudySetDetail : Screen("study_set_detail/{setId}") {

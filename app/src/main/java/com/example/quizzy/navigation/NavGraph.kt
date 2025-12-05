@@ -13,13 +13,26 @@ import com.example.quizzy.ui.screens.StudyModeScreen
 import com.example.quizzy.ui.screens.StudyModeSelectionScreen
 import com.example.quizzy.ui.screens.StudySetDetailScreen
 import com.example.quizzy.ui.screens.StudySetListScreen
+import com.example.quizzy.ui.screens.WelcomeScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.StudySetList.route
+        startDestination = Screen.Welcome.route
     ) {
+        composable(Screen.Welcome.route) {
+            val navigateToSets: () -> Unit = {
+                navController.navigate(Screen.StudySetList.route) {
+                    popUpTo(Screen.Welcome.route) { inclusive = true }
+                }
+            }
+            WelcomeScreen(
+                onStartStudying = navigateToSets,
+                onViewSets = navigateToSets
+            )
+        }
+
         // Main screen - list of study sets
         composable(Screen.StudySetList.route) {
             StudySetListScreen(
