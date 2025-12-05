@@ -1,6 +1,5 @@
 package com.example.quizzy.navigation
 
-// screen routes for navigation
 sealed class Screen(val route: String) {
     object StudySetList : Screen("study_set_list")
     object CreateSet : Screen("create_set")
@@ -10,6 +9,7 @@ sealed class Screen(val route: String) {
     object CreateFlashcard : Screen("create_flashcard/{setTitle}") {
         fun createRoute(setTitle: String) = "create_flashcard/$setTitle"
     }
+    object StudyMode : Screen("study_mode/{setTitle}") {
+        fun createRoute(setTitle: String) = "study_mode/$setTitle"
+    }
 }
-
-

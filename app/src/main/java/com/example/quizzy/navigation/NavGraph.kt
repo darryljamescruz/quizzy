@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.quizzy.ui.screens.CreateFlashcardScreen
 import com.example.quizzy.ui.screens.CreateSetScreen
+import com.example.quizzy.ui.screens.StudyModeScreen
 import com.example.quizzy.ui.screens.StudySetDetailScreen
 import com.example.quizzy.ui.screens.StudySetListScreen
 
@@ -25,6 +26,9 @@ fun NavGraph(navController: NavHostController) {
                 },
                 onNavigateToDetail = { studySet ->
                     navController.navigate(Screen.StudySetDetail.createRoute(studySet.title))
+                },
+                onNavigateToStudyMode = { studySet ->
+                    navController.navigate(Screen.StudyMode.createRoute(studySet.title))
                 }
             )
         }
@@ -54,7 +58,6 @@ fun NavGraph(navController: NavHostController) {
             StudySetDetailScreen(
                 studySetTitle = setTitle,
                 onNavigateBack = {
-                    // Go directly back to the main list
                     navController.popBackStack(Screen.StudySetList.route, inclusive = false)
                 },
                 onAddFlashcard = {
@@ -77,7 +80,22 @@ fun NavGraph(navController: NavHostController) {
                     navController.popBackStack()
                 },
                 onFlashcardCreated = {
-                    // Go back to detail screen after adding flashcard
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Study mode screen
+        composable(
+            route = Screen.StudyMode.route,
+            arguments = listOf(
+                navArgument("setTitle") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val setTitle = backStackEntry.arguments?.getString("setTitle") ?: "Study Set"
+            StudyModeScreen(
+                studySetTitle = setTitle,
+                onNavigateBack = {
                     navController.popBackStack()
                 }
             )

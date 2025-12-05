@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +35,8 @@ data class StudySet(
 @Composable
 fun StudySetListScreen(
     onNavigateToCreateSet: () -> Unit,
-    onNavigateToDetail: (StudySet) -> Unit = {}
+    onNavigateToDetail: (StudySet) -> Unit = {},
+    onNavigateToStudyMode: (StudySet) -> Unit = {}
 ) {
     // Mock data
     val studySets = remember {
@@ -123,7 +126,8 @@ fun StudySetListScreen(
                 items(studySets) { studySet ->
                     StudySetCard(
                         studySet = studySet,
-                        onNavigateToDetail = onNavigateToDetail
+                        onNavigateToDetail = onNavigateToDetail,
+                        onNavigateToStudyMode = onNavigateToStudyMode
                     )
                 }
             }
@@ -134,7 +138,8 @@ fun StudySetListScreen(
 @Composable
 fun StudySetCard(
     studySet: StudySet,
-    onNavigateToDetail: (StudySet) -> Unit = {}
+    onNavigateToDetail: (StudySet) -> Unit = {},
+    onNavigateToStudyMode: (StudySet) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -192,6 +197,20 @@ fun StudySetCard(
                         color = Color.Gray
                     )
                 }
+
+                // Expand/Collapse icon button
+                IconButton(
+                    onClick = { isExpanded = !isExpanded }
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded)
+                            Icons.Filled.KeyboardArrowUp
+                        else
+                            Icons.Filled.KeyboardArrowDown,
+                        contentDescription = if (isExpanded) "Collapse" else "Expand",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -228,7 +247,7 @@ fun StudySetCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = { /* TODO: Study */ }) {
+                    TextButton(onClick = { onNavigateToStudyMode(studySet) }) {
                         Text(
                             "Study",
                             color = MaterialTheme.colorScheme.primary,
