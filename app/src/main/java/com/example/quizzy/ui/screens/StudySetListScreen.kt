@@ -32,7 +32,8 @@ data class StudySet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySetListScreen(
-    onNavigateToCreateSet: () -> Unit
+    onNavigateToCreateSet: () -> Unit,
+    onNavigateToDetail: (StudySet) -> Unit = {}
 ) {
     // Mock data
     val studySets = remember {
@@ -120,7 +121,10 @@ fun StudySetListScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(studySets) { studySet ->
-                    StudySetCard(studySet = studySet)
+                    StudySetCard(
+                        studySet = studySet,
+                        onNavigateToDetail = onNavigateToDetail
+                    )
                 }
             }
         }
@@ -128,14 +132,20 @@ fun StudySetListScreen(
 }
 
 @Composable
-fun StudySetCard(studySet: StudySet) {
+fun StudySetCard(
+    studySet: StudySet,
+    onNavigateToDetail: (StudySet) -> Unit = {}
+) {
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize()
-            .clickable { isExpanded = !isExpanded },
+            .clickable {
+                // Navigate to detail screen when card is tapped
+                onNavigateToDetail(studySet)
+            },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
@@ -225,7 +235,7 @@ fun StudySetCard(studySet: StudySet) {
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    TextButton(onClick = { /* TODO: Edit */ }) {
+                    TextButton(onClick = { onNavigateToDetail(studySet) }) {
                         Text(
                             "Edit",
                             color = MaterialTheme.colorScheme.onPrimaryContainer,

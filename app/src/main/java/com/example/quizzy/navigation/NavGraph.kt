@@ -22,6 +22,9 @@ fun NavGraph(navController: NavHostController) {
             StudySetListScreen(
                 onNavigateToCreateSet = {
                     navController.navigate(Screen.CreateSet.route)
+                },
+                onNavigateToDetail = { studySet ->
+                    navController.navigate(Screen.StudySetDetail.createRoute(studySet.title))
                 }
             )
         }
@@ -51,7 +54,8 @@ fun NavGraph(navController: NavHostController) {
             StudySetDetailScreen(
                 studySetTitle = setTitle,
                 onNavigateBack = {
-                    navController.popBackStack()
+                    // Go directly back to the main list
+                    navController.popBackStack(Screen.StudySetList.route, inclusive = false)
                 },
                 onAddFlashcard = {
                     navController.navigate(Screen.CreateFlashcard.createRoute(setTitle))

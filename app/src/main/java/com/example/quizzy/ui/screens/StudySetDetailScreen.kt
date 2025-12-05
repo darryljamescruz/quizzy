@@ -36,7 +36,7 @@ fun StudySetDetailScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = {
+                title = { 
                     Column {
                         Text(
                             studySetTitle,
@@ -56,6 +56,17 @@ fun StudySetDetailScreen(
                             Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                },
+                actions = {
+                    // "Done" button to finish and go back to main list
+                    TextButton(onClick = onNavigateBack) {
+                        Text(
+                            "Done",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 },
